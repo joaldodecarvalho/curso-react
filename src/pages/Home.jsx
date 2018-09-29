@@ -1,56 +1,68 @@
-import React, {Component} from 'react';
-import PropTypes from 'prop-types';
-import {Button, Container, Form, FormControl, InputGroup, Row, Alert} from 'react-bootstrap';
+import React, { Component } from 'react';
+import { Button, Container, Form, FormControl, InputGroup, Row, Alert } from 'react-bootstrap';
 import ListaTweet from '../components/ListaTweet';
-
+import ListaUser from '../components/ListaUser';
+import UserService from '../services/UserService';
+import TweetService from '../services/TweetService'
+import { connect } from 'react-redux';
 
 class Home extends Component {
 
-    static propTypes = {
-        tweets: PropTypes.array,
-        onTweet: PropTypes.func.isRequired
-    };
-
     state = {
         currentPost: '',
-        alertVisible: false
+        alertVisible: false,
+        users: [],
+        tweets: []
     };
 
-    onChange = (event) => {
-        this.setState({currentPost: event.target.value})
-    };
+    componentDidMount() {
+        UserService.getAllUsers().then(users => this.setState({ users: users }))
+
+        const { usuarioLogado } = this.props
+
+        if (usuarioLogado !== undefined) {
+            this.getUserFeed(usuarioLogado)
+        }
+    }
+
+    componentDidUpdate(oldProps) {
+        const { usuarioLogado } = this.props
+
+        if (usuarioLogado !== oldProps.usuarioLogado && usuarioLogado !== undefined) {
+            this.getUserFeed(usuarioLogado)
+        }
+    }
+
+    getUserFeed = (user) => {
+        TweetService.getUserFeed(user).then(tweets => this.setState({ tweets }));
+    }
+
+    onChange = event => this.setState({ currentPost: event.target.value })
 
     onPost = () => {
 
-        const {currentUser} = this.props;
+        const { usuarioLogado } = this.props;
 
-        if (!currentUser) {
-            this.setState({alertVisible: true})
+        if (!usuarioLogado) {
+            this.setState({ alertVisible: true })
             return;
         }
 
-        const newTweet = {
-            content: this.state.currentPost,
-            uid: new Date(Date.now()).toISOString(),
-            author: currentUser.uid,
-            timestamp: Date.now(),
-            authorName: currentUser.displayName,
-            authorUserName: currentUser.userName,
-            authorPhotoURL: currentUser.photoURL
-        };
+        const { currentPost } = this.state;
 
-        this.setState({currentPost: '', alertVisible: false}, () => {
-            this.props.onTweet(newTweet);
+        this.setState({ currentPost: '', alertVisible: false }, () => {
+            TweetService.newTweet(currentPost)
+                .then(() => setTimeout(() => this.getUserFeed(usuarioLogado), 1000))
         })
     };
 
     render() {
 
-        const {currentPost, alertVisible} = this.state;
-        const {tweets} = this.props;
+        const { currentPost, alertVisible, users, tweets } = this.state;
 
         return (
-            <Container style={{marginTop: 30}}>
+            <Container style={{ marginTop: 30 }}>
+                <ListaUser users={users} />
                 <Alert variant="danger" defaultShow={alertVisible}>
                     Você deve estar logado para postar alguma coisa.
                 </Alert>
@@ -59,15 +71,15 @@ class Home extends Component {
                         <span className="ml-auto">{currentPost.length} / 140</span>
                         <InputGroup>
                             <FormControl as="textarea" aria-label="With textarea" maxLength={140}
-                                         value={currentPost} onChange={this.onChange}/>
+                                value={currentPost} onChange={this.onChange} />
                         </InputGroup>
                     </Row>
-                    <Row style={{justifyContent: 'flex-end', marginTop: 10}}>
+                    <Row style={{ justifyContent: 'flex-end', marginTop: 10 }}>
                         <Button variant="primary" onClick={this.onPost}>Postar</Button>
                     </Row>
 
                     <Row>
-                        <ListaTweet tweets={tweets}/>
+                        <ListaTweet tweets={tweets} />
                     </Row>
                 </Form>
             </Container>
@@ -75,5 +87,8 @@ class Home extends Component {
     }
 }
 
+const mapStateToProps = state => {
+    return { usuarioLogado: state.usuario.usuarioAtual }
+}
 
-export default Home;
+export default connect(mapStateToProps)(Home);

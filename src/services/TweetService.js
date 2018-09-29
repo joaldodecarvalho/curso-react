@@ -3,7 +3,7 @@ import AuthService from './AuthService';
 
 /** @type {import('../../types/index').TweetService} */
 const TweetService = {
-    newTweet: (tweetContent)=> {
+    newTweet: (tweetContent) => {
         const currentUser = AuthService.getCurrentUser();
         if (!currentUser) {
             return Promise.reject();
@@ -16,6 +16,7 @@ const TweetService = {
 
         return firebase.firestore().collection(`/tweets`).add(parsedTweet)
     },
+
     getUserTweets: (user, lastTweet) => {
 
         const query = firebase.firestore().collection(`/tweets`)
@@ -28,7 +29,8 @@ const TweetService = {
             .then(snapshot => snapshot.docs)
             .then(tweets => tweets.filter(tweet => tweet.exists))
     },
-    getUserFeed: (user, lastTweet)=> {
+
+    getUserFeed: (user, lastTweet) => {
         const query = firebase.firestore().collection(`/users/${user.uid}/feed/`)
             .orderBy('timestamp', 'desc')
             .limit(20);
